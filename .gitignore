@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+
+# restos temporales de kvmlink (actualizaciones y archivos a medio recibir)
+*.kvmnew
+*.kvmpart
+
+# configuración local antigua (la actual se guarda fuera de esta carpeta)
+kvmlink.json
+
+# sistema
+.DS_Store
+Thumbs.db

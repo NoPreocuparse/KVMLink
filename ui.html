@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kvmlink</title>
+<style>
+:root {
+  --bg: #f3f3f3; --card: #ffffff; --card2: #f9f9f9; --line: #e5e5e5; --text: #1b1b1b;
+  --muted: #5f5f5f; --accent: #0067c0; --accent-text: #fff; --mon: #e8e8e8; --mon-line: #c9c9c9;
+  --peer: #0067c0; --ok: #0f7b0f; --warn: #9d5d00; --err: #c42b1c; --off: #8a8a8a;
+  --stage: #fafafa; --shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #202020; --card: #2b2b2b; --card2: #323232; --line: #3a3a3a; --text: #f3f3f3;
+    --muted: #b0b0b0; --accent: #4cc2ff; --accent-text: #001a2b; --mon: #3a3a3a; --mon-line: #505050;
+    --peer: #0078d4; --ok: #6ccb5f; --warn: #fce100; --err: #ff99a4; --off: #9a9a9a;
+    --stage: #1c1c1c; --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 22px 16px 40px; }
+header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+h1 { font-size: 28px; font-weight: 600; margin: 0 8px 0 0; letter-spacing: -.01em; }
+h2 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 14px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--line); font-size: 13px; box-shadow: var(--shadow); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--off); flex: none; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.err { background: var(--err); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px;
+  margin-bottom: 14px; box-shadow: var(--shadow); }
+.stage { position: relative; height: 330px; background: var(--stage); border: 1px solid var(--line);
+  border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; }
+.mon { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--mon); border: 1px solid var(--mon-line); border-radius: 4px; color: var(--text); overflow: hidden; }
+.mon .n { font-size: 30px; font-weight: 300; line-height: 1; }
+.mon .d { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: center; padding: 0 4px; }
+.peer { position: absolute; cursor: grab; }
+.peer.drag { cursor: grabbing; } .peer.anim { transition: left .18s ease, top .18s ease; }
+.peer .mon { background: var(--peer); border-color: var(--peer); color: #fff; }
+.peer .mon .d { color: rgba(255,255,255,.85); }
+.peer.ghost .mon { opacity: .55; border-style: dashed; }
+.peer:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+.legend span.k::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+  margin-right: 6px; vertical-align: -1px; background: var(--mon); border: 1px solid var(--mon-line); }
+.legend span.p::before { background: var(--peer); border-color: var(--peer); }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .stage { height: 260px; } }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; width: 100%; }
+.seg button { flex: 1; border: 0; border-radius: 0; background: var(--card2); color: var(--text); padding: 9px 8px; }
+.seg button.on { background: var(--accent); color: var(--accent-text); }
+label.f { display: block; margin: 14px 0 5px; font-weight: 600; font-size: 13px; }
+input[type=text], input[type=password], input[type=number] { width: 100%; padding: 8px 10px; border-radius: 5px;
+  border: 1px solid var(--line); border-bottom-color: var(--muted); background: var(--card2); color: var(--text); font: inherit; }
+input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.hint { color: var(--muted); font-size: 12.5px; margin-top: 5px; }
+button { font: inherit; padding: 8px 16px; border-radius: 5px; border: 1px solid var(--line);
+  background: var(--card2); color: var(--text); cursor: pointer; }
+button:hover { filter: brightness(1.06); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+button.danger { color: var(--err); }
+button:disabled { opacity: .5; cursor: default; }
+.actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.err { color: var(--err); margin-top: 10px; min-height: 1em; }
+.toggle { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 0;
+  border-top: 1px solid var(--line); }
+.toggle:first-of-type { border-top: 0; }
+.toggle small { display: block; color: var(--muted); }
+.switch { position: relative; width: 40px; height: 20px; flex: none; }
+.switch input { opacity: 0; width: 100%; height: 100%; margin: 0; position: absolute; cursor: pointer; z-index: 1; }
+.switch span { position: absolute; inset: 0; border-radius: 10px; border: 1px solid var(--muted); transition: .15s; }
+.switch span::after { content: ""; position: absolute; width: 12px; height: 12px; border-radius: 50%; top: 3px; left: 4px;
+  background: var(--muted); transition: .15s; }
+.switch input:checked + span { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + span::after { left: 23px; background: var(--accent-text); }
+.switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+details summary { cursor: pointer; font-weight: 600; }
+.xfer { padding: 10px 0; border-top: 1px solid var(--line); }
+.xfer .top { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.xfer .top span:last-child { color: var(--muted); white-space: nowrap; }
+.bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 7px; overflow: hidden; }
+.bar > div { height: 100%; background: var(--accent); transition: width .3s; }
+.xfer.err .bar > div { background: var(--err); }
+.xfer.ok .bar > div { background: var(--ok); }
+pre { background: var(--stage); border: 1px solid var(--line); border-radius: 6px; padding: 10px; max-height: 260px;
+  overflow: auto; font: 12px/1.5 ui-monospace, Consolas, Menlo, monospace; white-space: pre-wrap; margin: 12px 0 0; }
+kbd { font: 12px ui-monospace, Consolas, Menlo, monospace; padding: 1px 6px; border: 1px solid var(--line);
+  border-bottom-width: 2px; border-radius: 4px; background: var(--card2); }
+footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  color: var(--muted); font-size: 13px; margin-top: 6px; }
+#offline { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); color: #fff; align-items: center;
+  justify-content: center; text-align: center; padding: 20px; font-size: 16px; z-index: 9; }
+</style>
+</head>
+<body>
+<div id="offline"><div id="offlineMsg"></div></div>
+<main>
+  <header>
+    <h1>kvmlink</h1>
+    <span class="pill"><span class="dot" id="linkDot"></span><span id="linkText">…</span></span>
+    <span class="pill"><span class="dot" id="stateDot"></span><span id="stateText">…</span></span>
+  </header>
+
+  <div class="card" id="permBox" role="alert" style="display:none;border-color:var(--err)">
+    <h2 style="color:var(--err)">macOS aún no deja a kvmlink usar el ratón y el teclado</h2>
+    <p class="sub" style="margin:0" id="permText"></p>
+    <div class="actions"><button class="primary" id="btnPerm" type="button">Abrir Ajustes del Sistema</button></div>
+  </div>
+
+  <div class="card" id="updBox" role="status" style="display:none;border-color:var(--accent)">
+    <h2 id="updTitle"></h2>
+    <p class="sub" id="updText" style="margin:0"></p>
+    <div class="actions" id="updActions"><button class="primary" id="btnUpdate" type="button"></button></div>
+    <div class="err" id="updErr" role="alert"></div>
+  </div>
+
+  <div class="card" id="outdated" role="alert" style="display:none;border-color:var(--err)">
+    <h2 style="color:var(--err)">El otro equipo tiene una versión antigua de kvmlink</h2>
+    <p class="sub" style="margin:0" id="outdatedText"></p>
+  </div>
+
+  <section class="card">
+    <h2>Disposición de pantallas</h2>
+    <p class="sub" id="layoutHint">Arrastra las pantallas del otro equipo para colocarlas como están en tu mesa.
+      El ratón pasará de un equipo a otro por los bordes que se toquen.</p>
+    <div class="stage" id="stage" aria-label="Disposición de pantallas"></div>
+    <div class="legend"><span class="k" id="legMe">Este equipo</span><span class="k p" id="legPeer">Otro equipo</span>
+      <span style="flex:1"></span><span style="display:none" id="savedMsg">✓ Guardado</span></div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Conexión</h2>
+      <p class="sub">Un equipo espera y el otro se conecta. La contraseña debe ser la misma en los dos.</p>
+      <div class="seg" role="tablist">
+        <button id="mListen" type="button">Este equipo espera</button>
+        <button id="mConnect" type="button">Este equipo se conecta</button>
+      </div>
+      <div id="targetBox">
+        <label class="f" for="target">Dirección IP del otro equipo</label>
+        <input type="text" id="target" placeholder="Vacío = buscarlo automáticamente" autocomplete="off">
+        <div class="hint">Si la búsqueda automática no lo encuentra, escribe la IP que muestra el otro equipo.</div>
+      </div>
+      <div id="myIpBox" class="hint" style="margin-top:12px"></div>
+      <label class="f" for="pw">Contraseña compartida</label>
+      <input type="password" id="pw" autocomplete="new-password">
+      <details style="margin-top:12px"><summary style="font-weight:400;color:var(--muted)">Avanzado</summary>
+        <label class="f" for="port">Puerto</label>
+        <input type="number" id="port" min="1" max="65535">
+      </details>
+      <div class="actions">
+        <button class="primary" id="btnSave" type="button">Guardar y conectar</button>
+        <button id="btnToggle" type="button">Detener</button>
+      </div>
+      <div class="err" id="connErr" role="alert"></div>
+    </section>
+
+    <section class="card">
+      <h2>Opciones</h2>
+      <label class="f" for="speed" style="margin-top:6px">Velocidad del ratón en el otro equipo: <span id="speedVal"></span></label>
+      <input type="range" id="speed" min="0.3" max="3" step="0.1">
+      <div style="margin-top:10px">
+        <div class="toggle"><div>Intercambiar Cmd y Ctrl<small>Cmd+C en el Mac llega como Ctrl+C al PC, y al revés</small></div>
+          <label class="switch"><input type="checkbox" id="swap_cmd_ctrl"><span></span></label></div>
+        <div class="toggle"><div>Compartir el portapapeles<small>El texto copiado pasa al otro equipo al cruzar</small></div>
+          <label class="switch"><input type="checkbox" id="clipboard"><span></span></label></div>
+        <div class="toggle"><div>Invertir el scroll recibido<small>Si al manejar este equipo la rueda va al revés</small></div>
+          <label class="switch"><input type="checkbox" id="invert_scroll"><span></span></label></div>
+        <div class="toggle" id="isoRow"><div>Intercambiar las teclas º y &lt;<small>Solo si en el Mac salen cambiadas</small></div>
+          <label class="switch"><input type="checkbox" id="iso_swap"><span></span></label></div>
+        <div class="toggle"><div>Abrir kvmlink al iniciar sesión<small id="autoHint">Se abre en segundo plano, con su icono junto al reloj</small></div>
+          <label class="switch"><input type="checkbox" id="autostart"><span></span></label></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Archivos</h2>
+    <p class="sub">Arrastra archivos o carpetas hasta el borde que da al otro equipo, sin soltar el
+      botón, y suéltalos allí. Se copian (el original no se toca) en la carpeta de destino del otro equipo.</p>
+    <div class="grid" style="gap:14px 22px">
+      <div>
+        <label class="f" for="receive_dir" style="margin-top:0">Carpeta donde se guardan los archivos recibidos</label>
+        <div class="row" style="flex-wrap:nowrap">
+          <input type="text" id="receive_dir" autocomplete="off" spellcheck="false">
+          <button id="btnDir" type="button">Guardar</button>
+        </div>
+        <div class="err" id="dirErr" role="alert" style="margin-top:6px"></div>
+      </div>
+      <div class="toggle" style="border:0;align-self:end"><div>Abrir la carpeta al recibir<small>Se abre sola cuando termina de llegar un envío</small></div>
+        <label class="switch"><input type="checkbox" id="open_on_receive"><span></span></label></div>
+    </div>
+    <div id="transfers" style="margin-top:6px"></div>
+  </section>
+
+  <section class="card">
+    <details id="logBox"><summary>Registro</summary><pre id="log"></pre></details>
+  </section>
+
+  <footer>
+    <span>Atajo de emergencia mientras manejas el otro equipo: <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>Q</kbd>.
+      Cerrar esta ventana no detiene kvmlink. <span id="buildTxt"></span></span>
+    <button class="danger" id="btnQuit" type="button">Salir de kvmlink</button>
+  </footer>
+</main>
+
+<script>
+"use strict";
+const TOKEN = location.hash.slice(1);
+const $ = id => document.getElementById(id);
+let S = null, dragging = false, formLoaded = false, mode = "listen", view = null;
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined
+    ? { headers: { "X-Token": TOKEN } }
+    : { method: "POST", headers: { "X-Token": TOKEN, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("Error " + r.status));
+  return j;
+}
+
+// ---------------------------------------------------------------- geometría
+const R = m => ({ l: m[0], t: m[1], r: m[2], b: m[3], primary: !!m[4], n: m[5] });
+const union = rs => ({ l: Math.min(...rs.map(r => r.l)), t: Math.min(...rs.map(r => r.t)),
+                       r: Math.max(...rs.map(r => r.r)), b: Math.max(...rs.map(r => r.b)) });
+const overlaps = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+
+// misma lógica que layout.snap_offset() en Python
+function snap(mine, pw, ph, px, py) {
+  const ub = union(mine);
+  const th = 0.04 * Math.max(ub.r - ub.l, ub.b - ub.t, 1);
+  let best = null;
+  for (const m of mine) {
+    const ov = Math.max(40, 0.1 * Math.min(m.r - m.l, m.b - m.t, pw, ph));
+    const align = (v, lo, hi, size, a0, a1) => {
+      v = clamp(v, lo, hi);
+      for (const t of [a0, a1 - size, (a0 + a1) / 2 - size / 2]) if (Math.abs(v - t) < th) return t;
+      return v;
+    };
+    const ys = align(py, m.t - ph + ov, m.b - ov, ph, m.t, m.b);
+    const xs = align(px, m.l - pw + ov, m.r - ov, pw, m.l, m.r);
+    for (const [cx, cy] of [[m.r, ys], [m.l - pw, ys], [xs, m.b], [xs, m.t - ph]]) {
+      const c = { l: cx, t: cy, r: cx + pw, b: cy + ph };
+      if (mine.some(o => overlaps(c, o))) continue;
+      const d = (cx - px) ** 2 + (cy - py) ** 2;
+      if (!best || d < best.d) best = { d, x: cx, y: cy };
+    }
+  }
+  return best ? { x: best.x, y: best.y } : { x: px, y: py };
+}
+
+// --------------------------------------------------------------- escenario
+function osName(os) { return os === "mac" ? "Mac" : os === "win" ? "PC" : "Equipo"; }
+
+function computeView(mine, pb, px, py) {
+  const pw = pb.r - pb.l, ph = pb.b - pb.t;
+  const all = union([...mine, { l: px, t: py, r: px + pw, b: py + ph }]);
+  const margin = 0.55 * Math.max(pw, ph);
+  const st = $("stage"), W = st.clientWidth, H = st.clientHeight;
+  const bw = all.r - all.l + 2 * margin, bh = all.b - all.t + 2 * margin;
+  const s = Math.min(W / bw, H / bh);
+  return { s, ox: W / 2 - ((all.l + all.r) / 2) * s, oy: H / 2 - ((all.t + all.b) / 2) * s };
+}
+
+function monDiv(m, label, detail) {
+  const d = document.createElement("div");
+  d.className = "mon";
+  d.innerHTML = '<div class="n"></div><div class="d"></div>';
+  d.querySelector(".n").textContent = label;
+  d.querySelector(".d").textContent = detail;
+  return d;
+}
+
+function place(el, l, t, w, h) {
+  el.style.left = l + "px"; el.style.top = t + "px"; el.style.width = w + "px"; el.style.height = h + "px";
+}
+
+function renderStage(keepView) {
+  if (!S) return;
+  const st = $("stage");
+  const mine = S.me.monitors.map(R);
+  const peer = S.peer.monitors.map(R);
+  const pb = union(peer);
+  const px = pb.l + S.layout.dx, py = pb.t + S.layout.dy;
+  if (!keepView || !view) view = computeView(mine, pb, px, py);
+  const { s, ox, oy } = view;
+  st.innerHTML = "";
+  const meName = osName(S.me.os);
+  for (const m of mine) {
+    const d = monDiv(m, m.n, `${meName}${m.primary ? " · principal" : ""}\n${m.r - m.l} × ${m.b - m.t}`);
+    d.style.whiteSpace = "pre-line";
+    place(d, ox + m.l * s, oy + m.t * s, (m.r - m.l) * s - 2, (m.b - m.t) * s - 2);
+    st.appendChild(d);
+  }
+  const g = document.createElement("div");
+  g.className = "peer" + (S.peer.connected ? "" : " ghost");
+  g.tabIndex = 0;
+  g.setAttribute("role", "button");
+  g.setAttribute("aria-label", "Pantallas de " + S.peer.name + ". Arrastra o usa las flechas para moverlas.");
+  place(g, ox + px * s, oy + py * s, (pb.r - pb.l) * s, (pb.b - pb.t) * s);
+  const pName = osName(S.peer.os);
+  for (const m of peer) {
+    const d = monDiv(m, pName + (peer.length > 1 ? " " + m.n : ""),
+                     `${S.peer.name}\n${m.r - m.l} × ${m.b - m.t}`);
+    d.style.whiteSpace = "pre-line";
+    place(d, (m.l - pb.l) * s, (m.t - pb.t) * s, (m.r - m.l) * s - 2, (m.b - m.t) * s - 2);
+    g.appendChild(d);
+  }
+  st.appendChild(g);
+  attachDrag(g, mine, pb);
+  $("legMe").textContent = `Este equipo (${S.me.name})`;
+  $("legPeer").textContent = S.peer.connected ? `${S.peer.name} (conectado)`
+    : S.peer.placeholder ? "Otro equipo (aún sin conectar; tamaño aproximado)" : `${S.peer.name} (sin conectar)`;
+}
+
+function attachDrag(g, mine, pb) {
+  const pw = pb.r - pb.l, ph = pb.b - pb.t;
+  let start = null;
+  const pos = () => ({ x: (parseFloat(g.style.left) - view.ox) / view.s, y: (parseFloat(g.style.top) - view.oy) / view.s });
+  const commit = async (x, y) => {
+    const sn = snap(mine, pw, ph, x, y);
+    g.classList.add("anim");
+    g.style.left = (view.ox + sn.x * view.s) + "px";
+    g.style.top = (view.oy + sn.y * view.s) + "px";
+    try {
+      const r = await api("/api/layout", { dx: Math.round(sn.x - pb.l), dy: Math.round(sn.y - pb.t) });
+      S.layout = r.layout;
+      const m = $("savedMsg"); m.style.display = ""; clearTimeout(m._t); m._t = setTimeout(() => m.style.display = "none", 1800);
+    } catch (e) { alert("No se pudo guardar la disposición: " + e.message); }
+    setTimeout(() => { g.classList.remove("anim"); dragging = false; renderStage(false); }, 220);
+  };
+  g.addEventListener("pointerdown", e => {
+    dragging = true; g.setPointerCapture(e.pointerId); g.classList.add("drag"); g.classList.remove("anim");
+    start = { mx: e.clientX, my: e.clientY, l: parseFloat(g.style.left), t: parseFloat(g.style.top) };
+  });
+  g.addEventListener("pointermove", e => {
+    if (!start) return;
+    g.style.left = (start.l + e.clientX - start.mx) + "px";
+    g.style.top = (start.t + e.clientY - start.my) + "px";
+  });
+  const end = () => { if (!start) return; start = null; g.classList.remove("drag"); const p = pos(); commit(p.x, p.y); };
+  g.addEventListener("pointerup", end);
+  g.addEventListener("pointercancel", end);
+  g.addEventListener("keydown", e => {
+    const step = Math.max(pw, ph) * 0.25;
+    const k = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (!k) return;
+    e.preventDefault(); dragging = true;
+    const p = pos(); commit(p.x + k[0], p.y + k[1]).then(() => g.focus && setTimeout(() => $("stage").querySelector(".peer")?.focus(), 260));
+  });
+}
+
+// ------------------------------------------------------------------ estado
+function setMode(m) {
+  mode = m;
+  $("mListen").classList.toggle("on", m === "listen");
+  $("mConnect").classList.toggle("on", m === "connect");
+  $("targetBox").style.display = m === "connect" ? "" : "none";
+}
+
+function render() {
+  const link = S.link, st = S.status;
+  const connected = !!S.peer.connected;
+  let dot = "", text = link.status;
+  if (connected) { dot = "ok"; text = "Conectado con " + S.peer.name; }
+  else if (!link.running) { dot = text.startsWith("error") ? "err" : ""; text = text.startsWith("error") ? text : "Detenido"; }
+  else dot = "warn";
+  $("linkDot").className = "dot " + dot;
+  $("linkText").textContent = text.charAt(0).toUpperCase() + text.slice(1);
+  const states = { local: ["", "Usando este equipo"], controlling: ["ok", "Manejando " + S.peer.name],
+                   controlled: ["warn", S.peer.name + " maneja este equipo"] };
+  const [sd, stx] = states[S.state] || ["", S.state];
+  $("stateDot").className = "dot " + sd;
+  $("stateText").textContent = stx;
+
+  renderUpdate();
+  const miss = S.permissions_missing || [];
+  $("permBox").style.display = miss.length ? "" : "none";
+  if (miss.length) $("permText").textContent =
+    `En Ajustes del Sistema → Privacidad y seguridad, activa «kvmlink» en: ${miss.join(" y ")}. ` +
+    "Si no aparece en la lista, añádelo con el botón +, desde tu carpeta Aplicaciones. " +
+    "Si ya aparece activado y aun así sale este aviso (pasa tras reinstalar la app), quítalo de " +
+    "las dos listas con el botón −, vuelve a añadirlo con + y cierra y abre kvmlink.";
+  const a = S.autostart;
+  $("autostart").disabled = !a.supported;
+  $("autostart").checked = !!a.enabled;
+  $("autoHint").textContent = a.supported
+    ? (S.me.os === "mac" ? "Se abre en segundo plano, con su icono en la barra de menús"
+                         : "Se abre en segundo plano, con su icono junto al reloj")
+    : a.hint;
+  $("buildTxt").textContent = "Versión " + S.build + ".";
+  $("outdated").style.display = S.peer.outdated ? "" : "none";
+  if (S.peer.outdated) $("outdatedText").textContent =
+    `${S.peer.name} sigue usando la versión anterior: no entiende la disposición de pantallas ni ` +
+    `tiene la interfaz. Copia la carpeta kvmlink nueva a ese equipo, sustituyendo la antigua, y vuelve a abrirlo.`;
+  $("btnToggle").textContent = link.running ? "Detener" : "Iniciar";
+  $("btnToggle").disabled = !S.config.has_key;
+  $("myIpBox").textContent = S.me.ips.length
+    ? `IP de este equipo: ${S.me.ips.join(", ")}` : "";
+  $("pw").placeholder = S.config.has_key ? "•••••••• guardada (escribe otra para cambiarla)"
+                                         : "Mínimo 6 caracteres, la misma en los dos equipos";
+  if (!formLoaded) {
+    formLoaded = true;
+    setMode(S.config.mode);
+    $("target").value = S.config.target === "auto" ? "" : S.config.target;
+    $("port").value = S.config.port;
+    const o = S.config.options;
+    $("speed").value = o.speed; $("speedVal").textContent = (+o.speed).toFixed(1) + "×";
+    for (const k of ["swap_cmd_ctrl", "clipboard", "invert_scroll", "iso_swap", "open_on_receive"]) $(k).checked = !!o[k];
+    $("receive_dir").value = o.receive_dir || "";
+    $("receive_dir").placeholder = S.receive_dir_default;
+    $("isoRow").style.display = S.me.os === "mac" ? "" : "none";
+  }
+  renderTransfers();
+  if (S.logs.length) {   // solo llegan las líneas nuevas
+    const pre = $("log"), atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 4;
+    for (const [n, line] of S.logs) { logLines.push(line); logSeq = n; }
+    if (logLines.length > 400) logLines.splice(0, logLines.length - 400);
+    pre.textContent = logLines.join("\n");
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+  }
+  // redibujar las pantallas solo si algo de lo que se ve ha cambiado
+  const sig = JSON.stringify([S.me.monitors, S.peer.monitors, S.peer.connected, S.peer.name,
+                              S.layout.dx, S.layout.dy, $("stage").clientWidth]);
+  if (!dragging && sig !== stageSig) { stageSig = sig; renderStage(false); }
+}
+
+function fmtBytes(n) {
+  const u = ["B", "KB", "MB", "GB"]; let i = 0;
+  while (n >= 1024 && i < 3) { n /= 1024; i++; }
+  return (i ? n.toFixed(1) : n) + " " + u[i];
+}
+
+function renderUpdate() {
+  const u = S.update, box = $("updBox"), name = S.peer.name;
+  const show = (title, text, button) => {
+    box.style.display = "";
+    $("updTitle").textContent = title;
+    $("updText").textContent = text;
+    $("updActions").style.display = button ? "" : "none";
+    if (button) $("btnUpdate").textContent = button;
+  };
+  if (S.restarting || (u && u.status === "listo"))
+    return show("kvmlink se ha actualizado", "Reiniciando con la versión nueva… Esta ventana se reconecta sola.");
+  if (!u) { box.style.display = "none"; return; }
+  if (u.status === "descargando")
+    return show("Actualizando kvmlink…", `Recibiendo la versión ${u.peer_build} desde ${name}. El progreso se ve en Archivos.`);
+  if (u.status === "instalando")
+    return show("Actualizando kvmlink…", "Comprobando e instalando los archivos…");
+  if (u.status === "error")
+    return show("No se pudo actualizar kvmlink", u.detail + ". Este equipo sigue con su versión; puedes reintentarlo.",
+                "Reintentar");
+  if (!u.differs) { box.style.display = "none"; return; }
+  if (u.peer_newer)
+    return show(`Hay una versión más nueva de kvmlink en ${name}`,
+      `${name} tiene la versión ${u.peer_build} y este equipo la ${u.my_build}. Se copiará por la conexión cifrada, ` +
+      `se guardará una copia de la actual y kvmlink se reiniciará solo.`, "Actualizar este equipo");
+  if ((u.peer_build || 0) < u.my_build)
+    return show(`${name} tiene una versión anterior de kvmlink`,
+      `Allí está la versión ${u.peer_build} y aquí la ${u.my_build}. Para actualizarlo, pulsa ` +
+      `«Actualizar este equipo» en la ventana de kvmlink de ${name}.`);
+  show(`Los archivos de kvmlink no coinciden con los de ${name}`,
+       `Los dos tienen la versión ${u.my_build}, pero con archivos distintos. Puedes copiar aquí la de ${name}.`,
+       `Copiar aquí la versión de ${name}`);
+}
+
+let xferSig = "";
+function renderTransfers() {
+  const sig = JSON.stringify(S.transfers);
+  if (sig === xferSig) return;
+  xferSig = sig;
+  const box = $("transfers");
+  box.innerHTML = "";
+  for (const t of S.transfers) {
+    const pct = t.total ? Math.min(100, 100 * t.done / t.total) : (t.status === "en curso" ? 0 : 100);
+    const cls = t.status === "error" || t.status === "cancelado" ? "err"
+              : t.status === "en curso" ? "" : "ok";
+    const el = document.createElement("div");
+    el.className = "xfer " + cls;
+    el.innerHTML = '<div class="top"><span></span><span></span></div><div class="bar"><div></div></div>';
+    const [a, b] = el.querySelectorAll(".top span");
+    a.textContent = (t.dir === "out" ? "↑ Enviando a " + S.peer.name + ": " : "↓ Recibiendo: ") + t.label;
+    b.textContent = t.status === "en curso" ? `${fmtBytes(t.done)} de ${fmtBytes(t.total)}`
+                  : t.status + (t.detail ? " · " + t.detail : "");
+    el.querySelector(".bar > div").style.width = pct + "%";
+    box.appendChild(el);
+  }
+}
+
+let logSeq = 0, stageSig = "";
+const logLines = [];
+
+let offline = false;
+async function poll() {
+  try {
+    S = await api("/api/state?since=" + logSeq);
+    if (offline) {           // kvmlink se ha reiniciado: su registro empieza de cero
+      offline = false;
+      $("offline").style.display = "none";
+      logSeq = 0; logLines.length = 0; stageSig = ""; xferSig = "";
+      S = await api("/api/state?since=0");
+    }
+    render();
+  } catch (e) {
+    if (!S) return;
+    offline = true;
+    $("offlineMsg").innerHTML = S.restarting
+      ? "<b>kvmlink se está reiniciando con la versión nueva…</b><br>Esta ventana se reconectará sola en unos segundos."
+      : "<b>kvmlink no está en marcha.</b><br>Vuelve a abrirlo con su lanzador y esta ventana se puede cerrar.";
+    $("offline").style.display = "flex";
+  }
+}
+
+// ---------------------------------------------------------------- acciones
+$("mListen").onclick = () => setMode("listen");
+$("mConnect").onclick = () => setMode("connect");
+$("btnSave").onclick = async () => {
+  $("connErr").textContent = "";
+  try {
+    await api("/api/connection", { mode, target: $("target").value.trim() || "auto",
+                                   port: +$("port").value || 24800, password: $("pw").value });
+    $("pw").value = "";
+    poll();
+  } catch (e) { $("connErr").textContent = e.message; }
+};
+$("btnToggle").onclick = async () => {
+  try { await api(S.link.running ? "/api/stop" : "/api/start", {}); setTimeout(poll, 300); }
+  catch (e) { $("connErr").textContent = e.message; }
+};
+let speedT = null;
+$("speed").oninput = () => {
+  $("speedVal").textContent = (+$("speed").value).toFixed(1) + "×";
+  clearTimeout(speedT); speedT = setTimeout(() => api("/api/options", { speed: +$("speed").value }), 250);
+};
+for (const k of ["swap_cmd_ctrl", "clipboard", "invert_scroll", "iso_swap", "open_on_receive"])
+  $(k).onchange = () => api("/api/options", { [k]: $(k).checked });
+$("btnDir").onclick = async () => {
+  $("dirErr").textContent = "";
+  try {
+    await api("/api/options", { receive_dir: $("receive_dir").value.trim() });
+    $("dirErr").style.color = "var(--ok)"; $("dirErr").textContent = "✓ Guardada";
+    setTimeout(() => { $("dirErr").textContent = ""; $("dirErr").style.color = ""; }, 1800);
+  } catch (e) { $("dirErr").style.color = ""; $("dirErr").textContent = e.message; }
+};
+$("autostart").onchange = async () => {
+  try { await api("/api/autostart", { enabled: $("autostart").checked }); }
+  catch (e) { alert("No se pudo cambiar: " + e.message); }
+  poll();
+};
+$("btnPerm").onclick = () => api("/api/permissions", {});
+$("btnUpdate").onclick = async () => {
+  $("updErr").textContent = "";
+  $("btnUpdate").disabled = true;
+  try { await api("/api/update", {}); setTimeout(poll, 200); }
+  catch (e) { $("updErr").textContent = e.message; }
+  finally { setTimeout(() => { $("btnUpdate").disabled = false; }, 1500); }
+};
+$("btnQuit").onclick = async () => {
+  if (!confirm("¿Salir de kvmlink? El ratón y el teclado dejarán de compartirse.")) return;
+  try { await api("/api/quit", {}); } catch (e) {}
+  document.body.innerHTML = '<main><h1>kvmlink se ha cerrado</h1><p class="sub">Puedes cerrar esta ventana.</p></main>';
+  clearInterval(timer);
+};
+window.addEventListener("resize", () => { if (!dragging) { stageSig = ""; renderStage(false); } });
+
+poll();
+const timer = setInterval(poll, 700);
+</script>
+</body>
+</html>

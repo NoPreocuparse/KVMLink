@@ -1,0 +1,4 @@
+# Guardar los archivos tal cual, sin convertir saltos de línea: los .command del Mac
+# dejan de funcionar con saltos de Windows, y kvmlink compara la huella (sha256) de sus
+# archivos entre los dos equipos para saber si están en la misma versión.
+* -text
