@@ -180,6 +180,7 @@ class App:
             "permissions_missing": getattr(self.plat, "permissions_missing", lambda: [])(),
             "restarting": self.restart_requested,
             "build": version.BUILD,
+            "version_name": version.NAME,
         }
 
     def api(self, path, body):

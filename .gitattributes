@@ -2,3 +2,9 @@
 # dejan de funcionar con saltos de Windows, y kvmlink compara la huella (sha256) de sus
 # archivos entre los dos equipos para saber si están en la misma versión.
 * -text
+
+# Fuera de los zip de descarga (git archive): solo son para desarrollar kvmlink
+.gitattributes export-ignore
+.gitignore export-ignore
+test_core.py export-ignore
+test_failsafe_win.py export-ignore

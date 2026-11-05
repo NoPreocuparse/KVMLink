@@ -396,7 +396,7 @@ function render() {
     ? (S.me.os === "mac" ? "Se abre en segundo plano, con su icono en la barra de menús"
                          : "Se abre en segundo plano, con su icono junto al reloj")
     : a.hint;
-  $("buildTxt").textContent = "Versión " + S.build + ".";
+  $("buildTxt").textContent = `Versión ${S.version_name} (compilación ${S.build}).`;
   $("outdated").style.display = S.peer.outdated ? "" : "none";
   if (S.peer.outdated) $("outdatedText").textContent =
     `${S.peer.name} sigue usando la versión anterior: no entiende la disposición de pantallas ni ` +
@@ -452,7 +452,7 @@ function renderUpdate() {
     return show("kvmlink se ha actualizado", "Reiniciando con la versión nueva… Esta ventana se reconecta sola.");
   if (!u) { box.style.display = "none"; return; }
   if (u.status === "descargando")
-    return show("Actualizando kvmlink…", `Recibiendo la versión ${u.peer_build} desde ${name}. El progreso se ve en Archivos.`);
+    return show("Actualizando kvmlink…", `Recibiendo la compilación ${u.peer_build} desde ${name}. El progreso se ve en Archivos.`);
   if (u.status === "instalando")
     return show("Actualizando kvmlink…", "Comprobando e instalando los archivos…");
   if (u.status === "error")
@@ -461,14 +461,14 @@ function renderUpdate() {
   if (!u.differs) { box.style.display = "none"; return; }
   if (u.peer_newer)
     return show(`Hay una versión más nueva de kvmlink en ${name}`,
-      `${name} tiene la versión ${u.peer_build} y este equipo la ${u.my_build}. Se copiará por la conexión cifrada, ` +
+      `${name} tiene la compilación ${u.peer_build} y este equipo la ${u.my_build}. Se copiará por la conexión cifrada, ` +
       `se guardará una copia de la actual y kvmlink se reiniciará solo.`, "Actualizar este equipo");
   if ((u.peer_build || 0) < u.my_build)
     return show(`${name} tiene una versión anterior de kvmlink`,
-      `Allí está la versión ${u.peer_build} y aquí la ${u.my_build}. Para actualizarlo, pulsa ` +
+      `Allí está la compilación ${u.peer_build} y aquí la ${u.my_build}. Para actualizarlo, pulsa ` +
       `«Actualizar este equipo» en la ventana de kvmlink de ${name}.`);
   show(`Los archivos de kvmlink no coinciden con los de ${name}`,
-       `Los dos tienen la versión ${u.my_build}, pero con archivos distintos. Puedes copiar aquí la de ${name}.`,
+       `Los dos tienen la compilación ${u.my_build}, pero con archivos distintos. Puedes copiar aquí la de ${name}.`,
        `Copiar aquí la versión de ${name}`);
 }
 

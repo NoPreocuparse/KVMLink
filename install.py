@@ -84,7 +84,7 @@ def _win_register_uninstall():
     import version
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, WIN_UNINSTALL_KEY) as k:
         winreg.SetValueEx(k, "DisplayName", 0, winreg.REG_SZ, "kvmlink")
-        winreg.SetValueEx(k, "DisplayVersion", 0, winreg.REG_SZ, str(version.BUILD))
+        winreg.SetValueEx(k, "DisplayVersion", 0, winreg.REG_SZ, f"{version.NAME} ({version.BUILD})")
         winreg.SetValueEx(k, "Publisher", 0, winreg.REG_SZ, "kvmlink")
         winreg.SetValueEx(k, "DisplayIcon", 0, winreg.REG_SZ, win_icon_path())
         winreg.SetValueEx(k, "InstallLocation", 0, winreg.REG_SZ, HERE)

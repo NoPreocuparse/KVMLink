@@ -7,12 +7,15 @@ los archivos aunque el número sea el mismo.
 import hashlib
 import os
 
-BUILD = 7   # 2: programa instalable (bandeja / barra de menús, inicio automático, app del Mac)
+NAME = "1.0"   # versión para las personas (releases de GitHub, ventana, Aplicaciones instaladas)
+
+BUILD = 8   # 2: programa instalable (bandeja / barra de menús, inicio automático, app del Mac)
 #             3: actualizar desde la versión 1 sin que rechace los instaladores
 #             4: volver a abrir kvmlink.app abre su ventana; el instalador cierra la copia en marcha
 #             5: reinstalar la app del Mac ya no invalida sus permisos (solo si cambia el lanzador)
 #             6: el icono de la barra de menús del Mac aparece (fallaba la clase del menú)
 #             7: tras actualizarse, pone al día la instalación sola (sin volver a instalar)
+#             8: versión 1.0, primera publicada
 
 PROGRAM_DIR = os.path.dirname(os.path.abspath(__file__))
 _EXTRA = {"kvmlink.bat", "kvmlink.command", "instalar.bat", "instalar.command",

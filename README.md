@@ -16,10 +16,19 @@ usar los periféricos del Mac o los del PC.
 - Atajo de emergencia mientras controlas el otro equipo: **Ctrl+Alt+Shift+Q**.
   Si se cae la Wi-Fi o el otro equipo, recuperas el control local automáticamente en ≤ 5 s.
 
+## Descarga
+
+Descarga **`kvmlink-<versión>.zip`** de la última versión en la sección
+[*Releases*](../../releases) del repositorio, en los dos equipos, y descomprímelo. Sale una
+carpeta `kvmlink`: déjala donde vaya a quedarse (en Windows, por ejemplo, en *Documentos*;
+en el Mac, en tu carpeta *Documentos*), porque el programa funciona desde ella.
+
+Hace falta **Python 3** en los dos equipos ([python.org](https://www.python.org/downloads/));
+en el Mac vale el que trae macOS. Las dependencias las instala el instalador.
+
 ## Instalación
 
-Copia esta carpeta a los dos equipos (en el Mac, a tu carpeta personal, por ejemplo a
-*Documentos*). Los archivos se quedan en esa carpeta: el instalador solo crea los accesos
+Los archivos se quedan en la carpeta `kvmlink`: el instalador solo crea los accesos
 directos, la app y el inicio automático, y las actualizaciones desde el otro equipo
 sustituyen los archivos de ahí.
 
@@ -28,7 +37,10 @@ sustituyen los archivos de ahí.
 1. Instala Python 3 desde [python.org](https://www.python.org/downloads/).
 2. Doble clic en **`instalar.bat`**. Crea los accesos directos de *kvmlink* en el menú Inicio
    y en el escritorio, hace que se abra solo al iniciar sesión, lo añade a *Configuración →
-   Aplicaciones instaladas* (desde ahí se desinstala) y lo abre.
+   Aplicaciones instaladas* (desde ahí se desinstala) y lo abre. Como viene de un zip
+   descargado, Windows puede avisar de que el archivo es de Internet: pulsa *Más
+   información → Ejecutar de todas formas* (o *Ejecutar*).
+3. La primera vez, acepta el aviso del Firewall de Windows para **redes privadas**.
 
 kvmlink vive en la **bandeja, junto al reloj**: clic para abrir su ventana, clic derecho para
 salir. Si el icono queda escondido, arrástralo desde la flecha **^** a la barra.
@@ -44,7 +56,9 @@ salir. Si el icono queda escondido, arrástralo desde la flecha **^** a la barra
    ```
    Crea **`kvmlink.app`** en tu carpeta *Aplicaciones* (compila un pequeño lanzador con las
    herramientas de desarrollo de Apple; si faltan, pide instalarlas con
-   `xcode-select --install`), hace que se abra solo al iniciar sesión y la abre.
+   `xcode-select --install`), hace que se abra solo al iniciar sesión y la abre. Si es la
+   primera vez que usas `python3`, macOS ofrecerá instalar esas herramientas: acepta y,
+   al terminar, vuelve a ejecutar `bash instalar.command`.
 2. macOS pedirá permisos **para kvmlink**: en *Ajustes del Sistema → Privacidad y
    seguridad*, actívalo en **Accesibilidad** y en **Monitorización de entrada**. Mientras
    falten, la ventana de kvmlink lo avisa con un botón que abre ese ajuste; en cuanto los
