@@ -607,6 +607,99 @@ def files_mod():
     return files
 
 
+def test_update_from_github():
+    """Una release falsa servida en local: se detecta, se descarga, se comprueba y se instala."""
+    import hashlib
+    import http.server
+    import io
+    import json
+    import os
+    import tempfile
+    import zipfile
+    import github_update as G
+    import version
+
+    def make_zip(files_):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            for name, content in files_.items():
+                z.writestr(name, content)
+        return buf.getvalue()
+
+    good = make_zip({"kvmlink/kvmlink.py": b"# 1.1\n", "kvmlink/ui.html": b"<p>1.1</p>",
+                     "kvmlink/test_algo.py": b"# prueba\n", "kvmlink/sub/otro.py": b"# no\n",
+                     "kvmlink/../fuera.py": b"# no\n", "kvmlink/virus.exe": b"MZ"})
+    served = {"zip": good, "tag": "v1.1", "digest": hashlib.sha256(good).hexdigest()}
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_GET(self):
+            if self.path.endswith("/releases/latest"):
+                assert self.headers["User-Agent"].startswith("kvmlink/")
+                body = json.dumps({"tag_name": served["tag"], "name": "kvmlink " + served["tag"],
+                                   "body": "Novedades de prueba", "html_url": "http://x/release",
+                                   "assets": [{"name": "kvmlink.zip", "size": len(served["zip"]),
+                                               "digest": "sha256:" + served["digest"],
+                                               "browser_download_url": base + "/kvmlink.zip"}]}).encode()
+            elif self.path == "/kvmlink.zip":
+                body = served["zip"]
+            else:
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    try:
+        assert G.parse_version("v1.10") > G.parse_version("1.9") > G.parse_version("v1.0")
+        checker = G.Checker(lambda *a: None, api=base)
+        rel = checker.check_now()
+        assert rel and rel["version"] == "1.1" and rel["sha256"] == served["digest"], rel
+        assert rel["notes"] == "Novedades de prueba"
+
+        tmp = tempfile.mkdtemp()
+        prog, cfg = os.path.join(tmp, "prog"), os.path.join(tmp, "cfg")
+        _program(prog, {"kvmlink.py": b"# 1.0\n", "ui.html": b"<p>1.0</p>", "notas.txt": b"mias"})
+
+        class C:
+            transfers = files_mod().Transfers()
+        applied = []
+        up = G.GithubUpdater(C(), lambda *a: None, cfg, rel, program_dir=prog,
+                             on_applied=lambda: applied.append(True))
+        up.start()
+        wait_for(lambda: up.done.is_set(), 10)
+        assert up.status == "listo" and applied, up.detail
+        assert sorted(os.listdir(prog)) == ["kvmlink.py", "notas.txt", "ui.html"], os.listdir(prog)
+        assert open(os.path.join(prog, "kvmlink.py"), "rb").read() == b"# 1.1\n"
+        assert not os.path.exists(os.path.join(tmp, "fuera.py"))
+        backups = os.listdir(os.path.join(cfg, "copias"))
+        assert open(os.path.join(cfg, "copias", backups[0], "kvmlink.py"), "rb").read() == b"# 1.0\n"
+
+        # zip manipulado: no coincide con el sha256 publicado -> no se instala nada
+        served["zip"] = make_zip({"kvmlink/kvmlink.py": b"# malicioso\n"})
+        up = G.GithubUpdater(C(), lambda *a: None, cfg, checker.check_now(), program_dir=prog)
+        up.start()
+        wait_for(lambda: up.done.is_set(), 10)
+        assert up.status == "error" and "no coincide" in up.detail, up.detail
+        assert open(os.path.join(prog, "kvmlink.py"), "rb").read() == b"# 1.1\n"
+
+        # la misma versión que la nuestra no se ofrece
+        served["tag"] = "v" + version.NAME
+        assert checker.check_now() is None and checker.available is None
+        # sin conexión: no falla, solo lo anota
+        bad = G.Checker(lambda *a: None, api="http://127.0.0.1:1")
+        assert bad.check_now() is None and bad.error
+    finally:
+        srv.shutdown()
+    print("ok  actualizar desde GitHub: comprueba el sha256 y solo instala archivos del programa")
+
+
 def test_input_keeps_priority_during_big_transfer():
     import os
     import tempfile
@@ -686,6 +779,7 @@ if __name__ == "__main__":
     test_copy_paste_files_pc_to_mac()
     test_update_from_other_computer()
     test_update_rejects_bad_files()
+    test_update_from_github()
     test_input_keeps_priority_during_big_transfer()
     test_receiver_rejects_bad_names()
     test_link_start_stop()

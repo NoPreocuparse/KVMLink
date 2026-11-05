@@ -130,6 +130,13 @@ el navegador). En ella:
    falta volver a ejecutar el instalador. Si en el Mac cambia la app en sí, se relanza con
    la nueva y macOS vuelve a pedir sus permisos (es lo único que no se puede automatizar).
 
+   Además, al abrirse (y luego cada 12 horas) kvmlink mira si hay una versión nueva
+   publicada en GitHub. Si la hay, la ventana lo avisa con sus novedades y un botón
+   **Actualizar**: descarga el zip de esa versión, comprueba que coincide con el publicado
+   (sha256), instala solo los archivos del programa, guarda una copia de la anterior y se
+   reinicia. Nada se descarga si no pulsas el botón. Basta con actualizar uno de los dos
+   equipos: el otro verá entonces **Actualizar este equipo** y lo copiará por la red.
+
 **Cerrar la ventana no detiene kvmlink**: sigue funcionando en segundo plano, con su icono en
 la bandeja / barra de menús; desde él vuelves a abrir la ventana o sales. La opción **Abrir
 kvmlink al iniciar sesión** está en *Opciones*.

@@ -21,6 +21,7 @@ import urllib.request
 import webbrowser
 
 import files
+import github_update
 import install
 import kvmlink as K
 import layout as L
@@ -81,6 +82,8 @@ class App:
         self.link = K.Link(self.core)
         self.quit_event = threading.Event()
         self.restart_requested = False
+        self.github = github_update.Checker(K.log)   # ¿versión nueva publicada en GitHub?
+        self.gh_updater = None
 
     def autostart_info(self):
         ok, why = install.autostart_supported()
@@ -123,6 +126,7 @@ class App:
         self.plat.start(self.core)
         threading.Thread(target=self.core.watchdog, name="watchdog", daemon=True).start()
         K.log(f"kvmlink en {self.plat.os_name}, pantallas: {self.core.monitors()}")
+        self.github.start()
         if self.cfg.get("key") and self.cfg.get("autostart", True):
             self.start_link()
 
@@ -134,7 +138,32 @@ class App:
         self.link.start(cfg["mode"], cfg.get("target") or "auto", int(cfg.get("port") or net.DEFAULT_PORT),
                         bytes.fromhex(cfg["key"]))
 
+    def github_info(self):
+        """Para la interfaz: versión nueva en GitHub y cómo va su instalación."""
+        rel, up = self.github.available, self.gh_updater
+        if up:   # en curso o terminada (aunque ya no conste como disponible)
+            rel = up.release
+        if not rel:
+            return None
+        return {"version": rel["version"], "title": rel["title"], "notes": rel["notes"][:4000],
+                "page": rel["page"], "status": up.status if up else "inactivo",
+                "detail": up.detail if up else ""}
+
+    def github_update(self):
+        rel = self.github.available
+        if not rel:
+            raise ValueError("No hay ninguna versión nueva en GitHub")
+        busy = ("descargando", "instalando")
+        if (self.gh_updater and self.gh_updater.status in busy) or \
+                (self.core.updater and self.core.updater.status in busy):
+            raise ValueError("Ya se está actualizando")
+        self.gh_updater = github_update.GithubUpdater(self.core, K.log, K.config_dir(), rel,
+                                                      program_dir=self.core.program_dir,
+                                                      on_applied=self._update_applied)
+        self.gh_updater.start()
+
     def shutdown(self):
+        self.github.stop()
         try:
             self.link.stop()
             self.core.on_disconnect()
@@ -176,6 +205,7 @@ class App:
             "receive_dir_default": files.default_receive_dir(),
             "config_file": K.CONFIG_FILE,
             "update": self.core.update_info(),
+            "github": self.github_info(),
             "autostart": self.autostart_info(),
             "permissions_missing": getattr(self.plat, "permissions_missing", lambda: [])(),
             "restarting": self.restart_requested,
@@ -259,6 +289,9 @@ class App:
             return {"ok": True}
         if path == "/api/update":
             self.core.request_update(K.config_dir())
+            return {"ok": True}
+        if path == "/api/github_update":
+            self.github_update()
             return {"ok": True}
         if path == "/api/quit":
             self.quit_event.set()

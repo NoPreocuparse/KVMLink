@@ -114,6 +114,15 @@ footer { display: flex; justify-content: space-between; align-items: center; gap
     <div class="actions"><button class="primary" id="btnPerm" type="button">Abrir Ajustes del Sistema</button></div>
   </div>
 
+  <div class="card" id="ghBox" role="status" style="display:none;border-color:var(--accent)">
+    <h2 id="ghTitle"></h2>
+    <p class="sub" id="ghText" style="margin:0"></p>
+    <details id="ghNotesBox" style="margin-top:8px"><summary>Novedades</summary>
+      <div id="ghNotes" class="sub" style="white-space:pre-wrap;margin-top:6px"></div></details>
+    <div class="actions" id="ghActions"><button class="primary" id="btnGh" type="button">Actualizar</button></div>
+    <div class="err" id="ghErr" role="alert"></div>
+  </div>
+
   <div class="card" id="updBox" role="status" style="display:none;border-color:var(--accent)">
     <h2 id="updTitle"></h2>
     <p class="sub" id="updText" style="margin:0"></p>
@@ -439,7 +448,28 @@ function fmtBytes(n) {
   return (i ? n.toFixed(1) : n) + " " + u[i];
 }
 
+function renderGithub() {
+  const g = S.github, box = $("ghBox");
+  // durante el reinicio ya lo anuncia el aviso de actualización (updBox)
+  if (!g || S.restarting || g.status === "listo") { box.style.display = "none"; return; }
+  box.style.display = "";
+  const busy = g.status === "descargando" || g.status === "instalando";
+  $("ghTitle").textContent = busy ? "Actualizando kvmlink…"
+    : g.status === "error" ? "No se pudo actualizar kvmlink"
+    : `Hay una versión nueva de kvmlink: ${g.version}`;
+  $("ghText").textContent = g.status === "descargando" ? `Descargando la versión ${g.version} desde GitHub. El progreso se ve en Archivos.`
+    : g.status === "instalando" ? "Comprobando e instalando los archivos…"
+    : g.status === "error" ? g.detail + ". Este equipo sigue con su versión; puedes reintentarlo."
+    : `Este equipo tiene la ${S.version_name}. Se descargará de GitHub, se comprobará que el archivo es el ` +
+      "publicado, se guardará una copia de la versión actual y kvmlink se reiniciará solo.";
+  $("ghNotesBox").style.display = g.notes ? "" : "none";
+  $("ghNotes").textContent = g.notes;
+  $("ghActions").style.display = busy ? "none" : "";
+  $("btnGh").textContent = g.status === "error" ? "Reintentar" : "Actualizar";
+}
+
 function renderUpdate() {
+  renderGithub();
   const u = S.update, box = $("updBox"), name = S.peer.name;
   const show = (title, text, button) => {
     box.style.display = "";
@@ -562,6 +592,13 @@ $("btnUpdate").onclick = async () => {
   try { await api("/api/update", {}); setTimeout(poll, 200); }
   catch (e) { $("updErr").textContent = e.message; }
   finally { setTimeout(() => { $("btnUpdate").disabled = false; }, 1500); }
+};
+$("btnGh").onclick = async () => {
+  $("ghErr").textContent = "";
+  $("btnGh").disabled = true;
+  try { await api("/api/github_update", {}); setTimeout(poll, 200); }
+  catch (e) { $("ghErr").textContent = e.message; }
+  finally { setTimeout(() => { $("btnGh").disabled = false; }, 1500); }
 };
 $("btnQuit").onclick = async () => {
   if (!confirm("¿Salir de kvmlink? El ratón y el teclado dejarán de compartirse.")) return;
